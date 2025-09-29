@@ -1,5 +1,5 @@
 [project]
-name = "Research Project"
+name = "rsp"
 version = "0.1.0"
 description = "Editing Facial Action Units through Diffusion Model Latent Spaces"
 authors = [
@@ -23,6 +23,13 @@ dependencies = [
     "tqdm>=4.67.1",
     "transformers>=4.56.2",
 ]
+
+[project.scripts]
+rsp = "rsp.main:main"
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
