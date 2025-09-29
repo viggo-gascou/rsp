@@ -30,7 +30,7 @@ install: ## Install dependencies
 	@$(MAKE) --quiet install-dependencies
 	@$(MAKE) --quiet setup-environment
 	@$(MAKE) --quiet install-pre-commit
-	@echo "Installed the 'EuroEval' project."
+	@echo "Installed the project."
 
 install-rust:
 	@if [ "$(shell which rustup)" = "" ]; then \
@@ -49,7 +49,7 @@ install-uv:
 
 install-dependencies:
 	@uv python install 3.12
-	@uv sync --python 3.12
+	@uv sync --no-dev --python 3.12
 
 setup-environment:
 	@uv run python src/scripts/setup_env.py
