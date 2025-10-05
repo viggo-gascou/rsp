@@ -19,24 +19,20 @@ export PATH := ${HOME}/.local/bin:${HOME}/.cargo/bin:$(PATH)
 # Set the shell to bash, enabling the use of `source` statements
 SHELL := /bin/bash
 
+# Set the default repository URL to be used for setting up a remote machine
+REPO ?= https://github.com/viggo-gascou/rsp.git
+
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
 install: ## Install dependencies
 	@echo "Installing the project..."
-	@$(MAKE) --quiet install-rust
 	@$(MAKE) --quiet install-uv
 	@$(MAKE) --quiet install-dependencies
 	@$(MAKE) --quiet setup-environment
 	@$(MAKE) --quiet install-pre-commit
 	@echo "Installed the project."
-
-install-rust:
-	@if [ "$(shell which rustup)" = "" ]; then \
-		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; \
-		echo "Installed Rust."; \
-	fi
 
 install-uv:
 	@if [ "$(shell which uv)" = "" ]; then \
@@ -53,9 +49,21 @@ install-dependencies:
 
 setup-environment:
 	@uv run python src/scripts/setup_env.py
-	source ~/.profile
-
 
 install-pre-commit:
 	@uv run pre-commit install
 	@uv run pre-commit autoupdate
+
+setup-remote: ## Setup environment on remote machine
+	@if [ -z "$(REMOTE)" ]; then \
+		echo "Error: REMOTE variable not set. Usage: make setup-remote REMOTE=user@host"; \
+		exit 1; \
+	fi
+	@echo "Setting up remote machine: $(REMOTE)"
+	@echo "Cloning repository: $(REPO)"
+	@ssh $(REMOTE) "git clone $(REPO) ~/project 2>/dev/null || (cd ~/project && git pull)"
+	@echo "Copying .env file..."
+	@scp .env $(REMOTE):~/project/.env
+	@echo "Running installation..."
+	@ssh $(REMOTE) "cd ~/project && make install"
+	@echo "Setup complete!"
