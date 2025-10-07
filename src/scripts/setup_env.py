@@ -4,6 +4,7 @@ from dotenv import dotenv_values
 
 
 def setup_env():
+    """Setup environment by adding any missing SSH keys to authorized_keys."""
     # setup environment by adding any missing SSH keys to authorized_keys
     ssh_keys = Path("~/.ssh/authorized_keys").expanduser().resolve()
     if ssh_keys.exists():
