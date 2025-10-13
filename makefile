@@ -44,8 +44,8 @@ install-uv:
 	fi
 
 install-dependencies:
-	@uv python install 3.12
-	@uv sync --no-dev --python 3.12
+	@uv python install 3.11
+	@uv sync --no-dev --python 3.11
 
 setup-environment:
 	@uv run python src/scripts/setup_env.py
