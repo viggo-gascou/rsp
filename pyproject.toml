@@ -57,6 +57,12 @@ name = "pytorch"
 url = "https://download.pytorch.org/whl/cu129"
 explicit = true
 
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+exclude = [".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".venv"]
+extend-exclude = ["*.ipynb"]
+
 [tool.ruff.lint]
 select = [
     # isort (imports)
