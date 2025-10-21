@@ -9,7 +9,7 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 
-from ..dataset import GenDataset
+from ..dataset import TensorDataset
 
 
 class AUPredictor:
@@ -52,7 +52,7 @@ class AUPredictor:
             pin_memory: Whether to pin memory for faster data transfer.
             progress_bar: Whether to show a progress bar.
         """
-        dataset = GenDataset(image)
+        dataset = TensorDataset(image)
         predictions = self.predict(
             dataset=dataset,
             face_threshold=face_threshold,
