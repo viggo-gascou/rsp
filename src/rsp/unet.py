@@ -242,7 +242,9 @@ class UNet:
 
         return UNetOutput(out=sample, h=None if self.h_space is None else bottleneck)
 
-    def sample(self, num_samples: int = 1, seed: Optional[int] = None) -> torch.Tensor:
+    def sample(
+        self, num_samples: int = 1, seed: Optional[int | torch.Tensor] = None
+    ) -> torch.Tensor:
         """Samples random noise in the dimensions of the Unet.
 
         Args:
@@ -253,9 +255,11 @@ class UNet:
             Random noise tensor.
         """
         return torch.randn(
-            num_samples,
-            self.model.config.in_channels,
-            self.model.sample_size,
-            self.model.sample_size,
+            size=(
+                num_samples,
+                self.model.config["in_channels"],
+                self.model.config["sample_size"],
+                self.model.config["sample_size"],
+            ),
             generator=torch.manual_seed(seed) if seed is not None else None,
         ).to(self.device)
