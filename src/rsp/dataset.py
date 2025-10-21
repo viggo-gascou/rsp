@@ -38,6 +38,9 @@ class TensorDataset(Dataset):
     def __init__(self, data: Tensor):
         """Initialize the dataset with the given data."""
         self.data = data
+        if len(self.data.shape) == 3:
+            self.data = self.data.unsqueeze(0)
+            # Ensures batch shape if not batch shape
 
     def __len__(self):
         """Return the number of samples in the dataset."""
@@ -45,10 +48,11 @@ class TensorDataset(Dataset):
 
     def __getitem__(self, idx) -> dict[str, Any]:
         """Return a sample from the dataset."""
-        return {
-            "Image": self.data[idx, ...],
+        temp = {
+            "Image": self.data[idx],
             "Frame": idx,
             "FileName": "tensor",
             "Scale": 1.0,
             "Padding": {"Left": 0, "Top": 0, "Right": 0, "Bottom": 0},
         }
+        return temp
