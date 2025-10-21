@@ -1,11 +1,14 @@
 """Semantic Diffusion class for generating images using a semantic diffusion model."""
 
 import torch
-from tqdm.rich import tqdm
+from diffusers.models.autoencoders.vq_model import VQModel
+from diffusers.schedulers.scheduling_ddim import DDIMScheduler
+from tqdm import tqdm
 
 from .diffusion import Diffusion
 from .interpolation import Interpolations
 from .stateclass import Q
+from .unet import UNet
 from .utils import image_grid
 
 
@@ -14,17 +17,16 @@ class SemanticDiffusion(Interpolations):
 
     def __init__(
         self,
-        unet,
-        scheduler,
-        vqvae=None,
-        model_id=None,
+        unet: UNet,
+        scheduler: DDIMScheduler,
+        model_id: str,
+        vqvae: VQModel | None,
         num_inference_steps=25,
         diffusers_default_scheduler=False,
         resize_to=256,
     ):
         """Initialize the SemanticDiffusion class."""
         self.vqvae = vqvae
-        self.is_vq = False if self.vqvae is None else True
         self.diff = Diffusion(
             scheduler=scheduler,
             unet=unet,
@@ -35,7 +37,7 @@ class SemanticDiffusion(Interpolations):
         self.is_conditional = False
         self.h_space = self.diff.unet.h_space
         self.resize_to = resize_to
-        if self.is_vq:
+        if self.vqvae is not None:
             self.img_size = 256
         else:
             self.img_size = self.diff.unet.model.sample_size
@@ -79,7 +81,7 @@ class SemanticDiffusion(Interpolations):
 
     def decode(self, q, **kwargs):
         """Decode the input data using the VQVAE model or the diffusion model."""
-        if self.is_vq:
+        if self.vqvae is not None:
             q.w0, q.hs, q.zs = self.diff.reverse_process(
                 q.wT, zs=q.zs, etas=q.etas, delta_hs=q.delta_hs, asyrp=q.asyrp, **kwargs
             )
@@ -92,12 +94,20 @@ class SemanticDiffusion(Interpolations):
         return q
 
     def sample(
-        self, decode=True, seed=None, prompt="", variance_seed=None, etas=None, **kwargs
+        self,
+        decode=True,
+        seed: int | None | torch.Tensor = None,
+        variance_seed=None,
+        etas=None,
+        **kwargs,
     ):
         """Samples random noise in the dimensions of the Unet."""
         if seed is None:
             seed = torch.randint(int(1e6), (1,))
-        q = Q(seed=seed, etas=etas, prompt=prompt)
+        if etas is not None:
+            q = Q(seed=seed, etas=etas)
+        else:
+            q = Q(seed=seed)
         sample = self.diff.unet.sample(seed=seed)
         if self.vqvae is not None:
             q.wT = sample
@@ -127,11 +137,11 @@ class SemanticDiffusion(Interpolations):
         """Samples random noise for the diffusion model."""
         return self.diff.sample_variance_noise(seed=seed)
 
-    def apply_direction(self, q, n, scale=1, space="hspace"):
+    def apply_direction(self, q, n, scale: float | torch.Tensor = 1.0, space="hspace"):
         """Applies a direction to a diffusion model."""
         q_edit = q.copy()
         if space == "noise":
-            if self.is_vq:
+            if self.vqvae is not None:
                 q_edit.wT = q_edit.wT + scale * n.wT.to(self.device)
             else:
                 q_edit.xT = q_edit.xT + scale * n.xT.to(self.device)
@@ -190,7 +200,7 @@ class SemanticDiffusion(Interpolations):
                 q.x0 = self.interp(q1.x0, q2.x0, t, method=method)
 
             elif space == "noise":
-                if self.is_vq:
+                if self.vqvae is not None:
                     q.wT = self.interp(q1.wT, q2.wT, t, method=method)
                 else:
                     q.xT = self.interp(q1.xT, q2.xT, t, method=method)
@@ -199,7 +209,7 @@ class SemanticDiffusion(Interpolations):
                 q = self.decode(q)
 
             elif space == "hspace":
-                if self.is_vq:
+                if self.vqvae is not None:
                     q.wT = q1.wT
                 else:
                     q.xT = q1.xT
@@ -208,7 +218,7 @@ class SemanticDiffusion(Interpolations):
                 )
                 q = self.decode(q)
             elif space == "vq-denoisedspace":
-                assert self.is_vq
+                assert self.vqvae is not None
                 raise NotImplementedError
                 # q.wT = self.interp(q1.wT, q2.wT, t, method=method
             else:

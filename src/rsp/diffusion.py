@@ -4,7 +4,7 @@ import logging
 
 import torch
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
-from tqdm.rich import tqdm
+from tqdm import tqdm
 
 from .unet import UNet
 
@@ -41,9 +41,9 @@ class Diffusion:
         self.h_shape = self.get_h_shape()
         self.variance_noise_shape = (
             self.num_inference_steps,
-            self.unet.model.config.in_channels,
-            self.unet.model.sample_size,
-            self.unet.model.sample_size,
+            self.unet.model.config["in_channels"],
+            self.unet.model.config["sample_size"],
+            self.unet.model.config["sample_size"],
         )
 
     def get_h_shape(self):
@@ -55,15 +55,15 @@ class Diffusion:
 
     def sanity_check(self):
         """Perform sanity checks."""
-        if self.scheduler.config.clip_sample:
+        if self.scheduler.config["clip_sample"]:
             logger.warning("Scheduler assumes clipping, setting to false")
-            self.scheduler.config.clip_sample = False
+            self.scheduler.config["clip_sample"] = False
 
     def get_variance(self, timestep):
         """Calculate the variance for a given timestep."""
         prev_timestep = (
             timestep
-            - self.scheduler.config.num_train_timesteps
+            - self.scheduler.config["num_train_timesteps"]
             // self.scheduler.num_inference_steps
         )
         alpha_prod_t = self.scheduler.alphas_cumprod[timestep]
@@ -94,7 +94,7 @@ class Diffusion:
         # 1. get previous step value (=t-1)
         prev_timestep = (
             timestep
-            - self.scheduler.config.num_train_timesteps
+            - self.scheduler.config["num_train_timesteps"]
             // self.scheduler.num_inference_steps
         )
         # 2. compute alphas, betas
@@ -141,7 +141,7 @@ class Diffusion:
         """Reverse process for diffusion."""
         if etas is None:
             etas = 0
-        if isinstance(etas, int) or isinstance(etas, float):
+        if isinstance(etas, (int, float)):
             etas = [etas] * self.num_inference_steps
         assert len(etas) == self.num_inference_steps
 
@@ -202,9 +202,9 @@ class Diffusion:
     def forward_step(self, model_output, timestep, sample):
         """Forward step for diffusion process."""
         next_timestep = min(
-            self.scheduler.config.num_train_timesteps - 2,
+            self.scheduler.config["num_train_timesteps"] - 2,
             timestep
-            + self.scheduler.config.num_train_timesteps
+            + self.scheduler.config["num_train_timesteps"]
             // self.scheduler.num_inference_steps,
         )
 
@@ -220,22 +220,22 @@ class Diffusion:
         ) / alpha_prod_t ** (0.5)
 
         next_sample = self.scheduler.add_noise(
-            pred_original_sample, model_output, torch.LongTensor([next_timestep])
+            pred_original_sample, model_output, torch.IntTensor([next_timestep])
         )
         return next_sample
 
     def forward(self, x0, etas=None, method_from="x0", prog_bar=False):
         """Forward process for diffusion."""
-        if etas is None or (type(etas) in [int, float] and etas == 0):
+        if etas is None or (isinstance(etas, (int, float)) and etas == 0):
             eta_is_zero = True
-            zs = None
+            etas = torch.empty(0)
         else:
             eta_is_zero = False
-            if type(etas) in [int, float]:
+            if isinstance(etas, (int, float)):
                 etas = [etas] * self.num_inference_steps
-            xts = self.sample_xts_from_x0(x0, method_from=method_from)
-            alpha_bar = self.scheduler.alphas_cumprod
-            zs = torch.zeros_like(self.sample_variance_noise())
+        xts = self.sample_xts_from_x0(x0, method_from=method_from)
+        alpha_bar = self.scheduler.alphas_cumprod
+        zs = torch.zeros_like(self.sample_variance_noise())
 
         xt = x0
         hs = torch.zeros(self.h_shape).to(self.device)
@@ -265,7 +265,7 @@ class Diffusion:
                 # direction to xt
                 prev_timestep = (
                     t
-                    - self.scheduler.config.num_train_timesteps
+                    - self.scheduler.config["num_train_timesteps"]
                     // self.scheduler.num_inference_steps
                 )
                 alpha_prod_t_prev = (
@@ -311,7 +311,7 @@ class Diffusion:
                 )
             xts = torch.cat([xts, x0], dim=0)
 
-        if method_from == "x_prev":
+        elif method_from == "x_prev":
             xts = torch.zeros(size=self.variance_noise_shape).to(x0.device)
             x_next = x0.clone()
 
@@ -324,7 +324,7 @@ class Diffusion:
 
             xts = torch.cat([xts, x0], dim=0)
 
-        if method_from == "dpm":
+        elif method_from == "dpm":
             xts = torch.zeros(size=self.variance_noise_shape).to(x0.device)
             x0.clone()
             t_final = self.timesteps[0]
@@ -339,6 +339,8 @@ class Diffusion:
                 xt = xtm1
                 xts[idx] = xt
             xts = torch.cat([xts, x0], dim=0)
+        else:
+            raise ValueError("Invalid method_from, choose from 'x0', 'x_prev', 'dpm'")
 
         return xts
 
@@ -346,7 +348,7 @@ class Diffusion:
         """mu_tilde (x_t, x_0) DDPM paper eq. 7."""
         prev_timestep = (
             timestep
-            - self.scheduler.config.num_train_timesteps
+            - self.scheduler.config["num_train_timesteps"]
             // self.scheduler.num_inference_steps
         )
         alpha_prod_t_prev = (
@@ -365,7 +367,7 @@ class Diffusion:
         """DDPM paper equation 6."""
         prev_timestep = (
             t
-            - self.scheduler.config.num_train_timesteps
+            - self.scheduler.config["num_train_timesteps"]
             // self.scheduler.num_inference_steps
         )
         alpha_prod_t_prev = (
