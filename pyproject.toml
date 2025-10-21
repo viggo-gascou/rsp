@@ -20,6 +20,7 @@ dependencies = [
   "py-feat",
   "python-dotenv>=1.1.1",
   "rich>=14.1.0",
+  "safetensors>=0.6.2",
   "scipy>=1.11.0,<1.12.0",
   "termcolor>=3.1.0",
   "torch>=2.8.0",
@@ -50,7 +51,7 @@ torch = [
 torchvision = [
   { index = "pytorch", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
-py-feat = { git = "https://github.com/cosanlab/py-feat" }
+py-feat = { git = "https://github.com/cosanlab/py-feat", rev = "c4f6364299ea2258ae1e73ed73c95750a18bff3e" }
 
 [[tool.uv.index]]
 name = "pytorch"

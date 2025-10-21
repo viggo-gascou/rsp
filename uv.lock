@@ -1981,7 +1981,7 @@ wheels = [
 [[package]]
 name = "py-feat"
 version = "0.7.0"
-source = { git = "https://github.com/cosanlab/py-feat#c4f6364299ea2258ae1e73ed73c95750a18bff3e" }
+source = { git = "https://github.com/cosanlab/py-feat?rev=c4f6364299ea2258ae1e73ed73c95750a18bff3e#c4f6364299ea2258ae1e73ed73c95750a18bff3e" }
 dependencies = [
     { name = "av" },
     { name = "celluloid" },
@@ -2355,6 +2355,7 @@ dependencies = [
     { name = "py-feat" },
     { name = "python-dotenv" },
     { name = "rich" },
+    { name = "safetensors" },
     { name = "scipy" },
     { name = "termcolor" },
     { name = "torch", version = "2.8.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
@@ -2387,9 +2388,10 @@ requires-dist = [
     { name = "numpy", specifier = "<2" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "pillow", specifier = ">=11.3.0" },
-    { name = "py-feat", git = "https://github.com/cosanlab/py-feat" },
+    { name = "py-feat", git = "https://github.com/cosanlab/py-feat?rev=c4f6364299ea2258ae1e73ed73c95750a18bff3e" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "rich", specifier = ">=14.1.0" },
+    { name = "safetensors", specifier = ">=0.6.2" },
     { name = "scipy", specifier = ">=1.11.0,<1.12.0" },
     { name = "termcolor", specifier = ">=3.1.0" },
     { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.8.0" },
