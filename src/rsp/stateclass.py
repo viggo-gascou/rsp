@@ -1,64 +1,62 @@
 """Representation state class."""
 
 import copy
-from typing import Optional
+from dataclasses import dataclass, field
 
 import torch
 
 
+def _default_empty_tensor() -> torch.Tensor:
+    """Create an empty tensor, used only in the stateclass for initialization."""
+    return torch.empty(0)
+
+
+@dataclass
 class Q:
-    """Representation state class."""
+    """Representation state class.
 
-    def __init__(
-        self,
-        x0: Optional[torch.Tensor] = None,
-        xT: Optional[torch.Tensor] = None,
-        w0: Optional[torch.Tensor] = None,
-        wT: Optional[torch.Tensor] = None,
-        hs: Optional[torch.Tensor] = None,
-        zs: Optional[torch.Tensor] = None,
-        etas: Optional[torch.Tensor] = None,
-        delta_hs: Optional[torch.Tensor] = None,
-        seed: Optional[int] = None,
-        asyrp: Optional[bool] = None,
-        cfg_scale: Optional[float] = None,
-        label: Optional[str] = None,
-    ):
-        """Initialize the state class.
+    Attributes:
+        x0:
+            Clean image tensor. Defaults to an empty tensor.
+        xT:
+            Noisy image tensor. Defaults to an empty tensor.
+        w0:
+            Clean latent tensor (in case is_vq=True). Defaults to an empty tensor.
+        wT:
+            Noisy latent tensor. Defaults to an empty tensor.
+        hs:
+            h-space representation tensor. Defaults to an empty tensor.
+        zs:
+            Variance noise added tensor (pre-sampled). Default to an empty tensor.
+        etas:
+            eta schedule tensor. Default to an empty tensor.
+        delta_hs:
+            delta hs to be injected during decoding tensor. Default to an empty tensor.
+        seed:
+            Seed for random number generators. Defaults to 0.
+        asyrp:
+            If delta hs injection is asymetrical. Defaults to False.
+        cfg_scale:
+            Classifier free guidance scale. Defaults to 1.0.
+        label:
+            Label. Defaults to an empty string.
+    """
 
-        Args:
-            x0: Clean image tensor.
-            xT: Noisy image tensor.
-            w0: Clean latent tensor (in case is_vq=True).
-            wT: Noisy latent tensor.
-            hs: h-space representation tensor.
-            zs: Variance noise added tensor (pre-sampled).
-            etas: eta schedule tensor.
-            delta_hs: delta hs to be injected during decoding tensor.
-            seed: Seed for random number generators.
-            asyrp: If delta hs injection is asymetrical.
-            cfg_scale: Classifier free guidance scale.
-            label (Optional): Label.
-        """
-        self.x0 = x0
-        self.xT = xT
-        self.w0 = w0
-        self.wT = wT
-
-        self.zs = zs
-        self.hs = hs
-
-        # Modifiers
-        self.etas = etas
-        self.delta_hs = delta_hs
-        self.seed = seed
-        self.asyrp = asyrp
-        self.cfg_scale = cfg_scale
-        self.label = label
+    x0: torch.Tensor = field(default_factory=_default_empty_tensor)
+    xT: torch.Tensor = field(default_factory=_default_empty_tensor)
+    w0: torch.Tensor = field(default_factory=_default_empty_tensor)
+    wT: torch.Tensor = field(default_factory=_default_empty_tensor)
+    hs: torch.Tensor = field(default_factory=_default_empty_tensor)
+    zs: torch.Tensor = field(default_factory=_default_empty_tensor)
+    etas: torch.Tensor | None = field(default=None)
+    delta_hs: torch.Tensor = field(default_factory=_default_empty_tensor)
+    seed: int | torch.Tensor = field(default=0)
+    asyrp: bool = field(default=False)
+    cfg_scale: float = field(default=1.0)
+    label: str = field(default="")
 
     def copy(self):
         """Create a deepcopy of the state class."""
-        # return  Q(**self.__dict__.copy())
         return Q(**copy.deepcopy(self.__dict__))
 
     def set_delta_hs(self, delta_hs: torch.Tensor) -> "Q":
@@ -73,14 +71,38 @@ class Q:
     def to_string(self) -> str:
         """Return a string representation of the state class."""
         string = f"seed={self.seed}-etas={self.etas}"
-        if self.label is not None:
-            string += f"label={self.label}"
+        string += f"label={self.label}"
         return string
 
     def __add__(self, other):
         """Add two state classes."""
+        if self.delta_hs.numel() <= 0 or other.delta_hs.numel() <= 0:
+            raise ValueError("Cannot add two Q instances with empty delta_hs")
         return Q(delta_hs=self.delta_hs + other.delta_hs)
 
     def __sub__(self, other):
         """Subtract two state classes."""
+        if self.delta_hs.numel() <= 0 or other.delta_hs.numel() <= 0:
+            raise ValueError("Cannot subtract two Q instances with empty delta_hs")
         return Q(delta_hs=self.delta_hs - other.delta_hs)
+
+    def to_state_dict(self) -> dict:
+        """Convert the state class to a dictionary."""
+        return {
+            "x0": self.x0,
+            "xT": self.xT,
+            "w0": self.w0,
+            "wT": self.wT,
+            "zs": self.zs,
+            "hs": self.hs,
+            "etas": self.etas,
+            "delta_hs": self.delta_hs,
+            "seed": self.seed,
+            "asyrp": self.asyrp,
+            "cfg_scale": self.cfg_scale,
+            "label": self.label,
+        }
+
+    def from_state_dict(self, state_dict: dict) -> "Q":
+        """Create a state class from a dictionary."""
+        return Q(**state_dict)
