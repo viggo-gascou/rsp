@@ -13,7 +13,7 @@ def load_model(
     device: str = "cuda",
     h_space: str = "after",
     num_inference_steps: int = 25,
-):
+) -> SemanticDiffusion:
     """Load a semantic diffusion model.
 
     Args:
