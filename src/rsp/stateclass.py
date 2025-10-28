@@ -74,15 +74,20 @@ class Q:
         string += f"label={self.label}"
         return string
 
+    def _is_initialized(self, tensor: torch.Tensor | None) -> bool:
+        if tensor is None:
+            return False
+        return tensor.numel() <= 0
+
     def __add__(self, other):
         """Add two state classes."""
-        if self.delta_hs.numel() <= 0 or other.delta_hs.numel() <= 0:
+        if self._is_initialized(self.delta_hs) and self._is_initialized(other.delta_hs):
             raise ValueError("Cannot add two Q instances with empty delta_hs")
         return Q(delta_hs=self.delta_hs + other.delta_hs)
 
     def __sub__(self, other):
         """Subtract two state classes."""
-        if self.delta_hs.numel() <= 0 or other.delta_hs.numel() <= 0:
+        if self._is_initialized(self.delta_hs) and self._is_initialized(other.delta_hs):
             raise ValueError("Cannot subtract two Q instances with empty delta_hs")
         return Q(delta_hs=self.delta_hs - other.delta_hs)
 
