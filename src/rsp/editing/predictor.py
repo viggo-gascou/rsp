@@ -1,15 +1,22 @@
 """AU Prediction module."""
 
+import logging
+
 import numpy as np
 import pandas as pd
 import torch
 from feat import Detector
+from feat.data import Fex
 from feat.utils.image_operations import compute_original_image_size
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 
+from rsp.constants import SUPPORTED_AUS
+
 from ..dataset import TensorDataset
+
+logger = logging.getLogger("rsp")
 
 
 class AUPredictor:
@@ -21,91 +28,127 @@ class AUPredictor:
         au_model: str = "xgb",
         emotion_model: str = "resmasknet",
         identity_model: str = "facenet",
-        device: str = "cuda",
-    ):
-        """Initialize the AUPredictor class."""
-        self.device = device
-        self.model = Detector(
-            landmark_model=landmark_model,
-            au_model=au_model,
-            emotion_model=emotion_model,
-            identity_model=identity_model,
-            device=self.device,
-        )
-
-    def predict_single(
-        self,
-        image: torch.Tensor,
-        face_threshold: float = 0.9,
-        face_identity_threshold: float = 0.8,
-        num_workers: int = 0,
-        pin_memory: bool = False,
-        progress_bar: bool = True,
-    ):
-        """Predicts the Facial Action Units (AUs) in a given image.
-
-        Args:
-            image: The image to predict on.
-            face_threshold: The minimum confidence threshold for face detection.
-            face_identity_threshold: The minimum confidence threshold for face identity.
-            num_workers: The number of workers to use for data loading.
-            pin_memory: Whether to pin memory for faster data transfer.
-            progress_bar: Whether to show a progress bar.
-        """
-        dataset = TensorDataset(image)
-        predictions = self.predict(
-            dataset=dataset,
-            face_threshold=face_threshold,
-            face_identity_threshold=face_identity_threshold,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
-            batch_size=1,
-            progress_bar=progress_bar,
-        )
-        return predictions[0]
-
-    def predict(
-        self,
-        dataset: Dataset,
         face_threshold: float = 0.9,
         face_identity_threshold: float = 0.8,
         num_workers: int = 0,
         pin_memory: bool = False,
         batch_size: int = 32,
         progress_bar: bool = True,
+        device: str = "cuda",
     ):
+        """Initialize the AUPredictor class.
+
+        Args:
+            landmark_model:
+                The landmark detection model to use.
+            au_model:
+                The AU detection model to use.
+            emotion_model:
+                The emotion detection model to use.
+            identity_model:
+                The identity recognition model to use.
+            face_threshold:
+                The minimum confidence threshold for face detection.
+            face_identity_threshold:
+                The minimum confidence threshold for face identity.
+            num_workers:
+                The number of workers to use for data loading.
+            pin_memory:
+                Whether to pin memory for data loading.
+            batch_size:
+                The batch size to use for prediction.
+            progress_bar:
+                Whether to show a progress bar during prediction.
+            device:
+                The device to use for computation.
+        """
+        self.device = device
+        if "cuda" in self.device:
+            detector_device = "cuda"
+        else:
+            detector_device = "cpu"
+
+        self.face_threshold = face_threshold
+        self.face_identity_threshold = face_identity_threshold
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
+        self.batch_size = batch_size
+        self.progress_bar = progress_bar
+
+        self.model = Detector(
+            landmark_model=landmark_model,
+            au_model=au_model,
+            emotion_model=emotion_model,
+            identity_model=identity_model,
+            device=detector_device,
+        )
+
+    def predict(
+        self,
+        images: torch.Tensor | None = None,
+        dataset: TensorDataset | None = None,
+        batch_size: int | None = None,
+    ) -> torch.Tensor:
         """Predicts the Facial Action Units (AUs) in a batch of images.
 
         Args:
-            dataset: The dataset to predict on.
-            face_threshold: The minimum confidence threshold for face detection.
-            face_identity_threshold: The minimum confidence threshold for face identity.
-            num_workers: The number of workers to use for data loading.
-            pin_memory: Whether to pin memory for data loading.
-            batch_size: The batch size to use for prediction.
-            progress_bar: Whether to show a progress bar during prediction.
+            images:
+                The images to predict on. Mutually exclusive with 'dataset'.
+            dataset:
+                The dataset to predict on. Mutually exclusive with 'images'.
+            batch_size:
+                The batch size to use for prediction.
+
+        Returns:
+            The predicted Facial Action Units (AUs) for the input images.
+
+        Raises:
+            ValueError:
+                If both 'images' and 'dataset' are provided, or if neither are provided.
         """
-        self.batch_size = batch_size
+        if dataset is not None and images is not None:
+            raise ValueError("Only one of 'images' or 'dataset' should be provided.")
+        elif dataset is None and images is None:
+            raise ValueError("One of 'images' or 'dataset' must be provided.")
+        elif dataset is None and isinstance(images, torch.Tensor):
+            dataset = TensorDataset(images)
+        else:
+            raise ValueError(
+                f"Invalid input type ({type(images)} for 'images', should be "
+                "'torch.Tensor')"
+            )
+
+        if batch_size is not None:
+            self.batch_size = batch_size
+
         data_loader = DataLoader(
             dataset,
             shuffle=False,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            pin_memory=pin_memory,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
         )
-        self.data_loader = tqdm(data_loader) if progress_bar else data_loader
+        self.data_loader = tqdm(data_loader) if self.progress_bar else data_loader
 
-        results = self._predict_batches(
-            face_threshold=face_threshold,
-            face_identity_threshold=face_identity_threshold,
-        )
+        results = self._predict_batches()
 
-        # Filter for largest face per image
-        largest_faces = self._filter_largest_faces(results)
+        batch_results = torch.full((len(dataset), len(SUPPORTED_AUS)), fill_value=-1.0)
 
-        # Extract AU predictions
-        au_scores = largest_faces.aus
-        return torch.tensor(au_scores.values, dtype=torch.float32)
+        # Handle each image individually
+        for image_idx in range(len(dataset)):
+            image_results = results[results["frame"] == image_idx]
+            if not image_results.isnull().any().any():
+                # Face detected for this image - use the working AU extraction
+                largest_face = self._filter_largest_faces(image_results)
+                au_scores = largest_face.aus
+                batch_results[image_idx] = torch.tensor(
+                    au_scores.values, dtype=torch.float32
+                )
+            else:
+                # Probably no face detected, skip this image and set -1 for all AUs
+                continue
+
+        return batch_results
 
     def _filter_largest_faces(self, results: pd.DataFrame):
         """Filter results to keep only the largest face per image."""
@@ -119,16 +162,10 @@ class AUPredictor:
 
         return largest_faces
 
-    def _predict_batches(
-        self, face_threshold: float = 0.9, face_identity_threshold: float = 0.8
-    ):
+    def _predict_batches(self) -> Fex:
         """Predicts the Facial Action Units (AUs) in a batch of images.
 
         modified from https://github.com/cosanlab/py-feat/blob/c4f6364299ea2258ae1e73ed73c95750a18bff3e/feat/detector.py#L513.
-
-        Args:
-            face_threshold: Threshold for face detection.
-            face_identity_threshold: Threshold for face identity.
 
         Returns:
             torch.Tensor: Predicted Facial Action Units (AUs).
@@ -140,7 +177,7 @@ class AUPredictor:
             faces_data = self.model.detect_faces(
                 batch_data["Image"],
                 face_size=self.model.face_size if hasattr(self, "face_size") else 112,
-                face_detection_threshold=face_threshold,
+                face_detection_threshold=self.face_threshold,
             )
             batch_results = self.model.forward(faces_data)
 
@@ -215,5 +252,7 @@ class AUPredictor:
 
         batch_output = pd.concat(batch_output).reset_index(drop=True)
 
-        batch_output.compute_identities(threshold=face_identity_threshold, inplace=True)
+        batch_output.compute_identities(
+            threshold=self.face_identity_threshold, inplace=True
+        )
         return batch_output

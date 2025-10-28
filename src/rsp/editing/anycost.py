@@ -38,23 +38,26 @@ class AnycostPredictor:
         else:
             self.estimator = estimator
 
-    def get_attr(self, img: torch.Tensor):
-        """Get attribute scores for the generated image.
+    def __call__(self, imgs: torch.Tensor, batch_size: int | None = None):
+        """Get attribute scores for the generated image or images.
 
         Args:
-            img: Input image tensor.
+            imgs:
+                Input image tensors.
+            batch_size:
+                Batch size for prediction.
 
         Returns:
-            torch.Tensor: Attribute scores for the generated image.
+            torch.Tensor: Attribute scores for all of the input images.
         """
-        attr_preds = self.estimator.model.detect(img, data_type="tensor")
+        # Unnormalize the images from [-1, 1] to [0, 255] for the predictor
+        # by first mapping to [0, 1], then to [0, 255] and clamping
+        # finally move to CPU since predictor will move it to GPU itself.
+        imgs = ((imgs + 1.0) / 2.0 * 255.0).clamp(0, 255).cpu()
 
-        # Extract AU predictions
-        au_scores = attr_preds.aus
-        tensor_au_scores = torch.tensor(au_scores.values.T, dtype=torch.float32)
-        print(tensor_au_scores.shape)
+        attr_preds = self.estimator.predict(images=imgs, batch_size=batch_size)
 
-        return tensor_au_scores
+        return attr_preds
 
 
 class AnycostDirections:
@@ -65,6 +68,7 @@ class AnycostDirections:
         sd: SemanticDiffusion,
         out_folder: Path = Path("results/anycost/"),
         etas=None,
+        batch_size: int = 1,
         num_examples: int = 100,
         idx_size: int = 10000,
     ):
@@ -89,6 +93,7 @@ class AnycostDirections:
             self.out_folder,
             f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}.safetensors",
         )
+        self.batch_size = batch_size
         self.attrs = self.get_attrs(etas=self.etas)
         self.ns = {}
 
@@ -108,12 +113,23 @@ class AnycostDirections:
             return load_file(self.idx_path)["attr"]
 
         logger.info("Calculating attribute index to", self.idx_path)
-        results = {"attr": torch.zeros((self.idx_size, len(self.attr_list), 1))}
+        results = {"attr": torch.zeros((self.idx_size, len(self.attr_list)))}
 
-        for i in tqdm(range(self.idx_size)):
-            q = self.sd.sample(seed=i, etas=etas)
+        if self.batch_size > 1:
+            for i in tqdm(range(0, self.idx_size, self.batch_size)):
+                # Sample a batch of images
+                batch_end = min(i + self.batch_size, self.idx_size)
+                seeds = list(range(i, batch_end))
+                qs = [self.sd.sample(seed=seed, etas=etas) for seed in seeds]
+                # Concatenate the images from the batch and get their attributes
+                imgs = torch.cat([q.x0.float() for q in qs], dim=0)
+                batch_attrs = self.ap(imgs, batch_size=self.batch_size)
+                results["attr"][i:batch_end] = batch_attrs
+        else:
+            for i in tqdm(range(self.idx_size)):
+                q = self.sd.sample(seed=i, etas=etas)
 
-            results["attr"][i] = self.ap.get_attr(q.x0.float())
+                results["attr"][i : i + 1] = self.ap(q.x0.float(), batch_size=1)
 
         save_file(results, self.idx_path)
         logger.info("Anycost attributes index saved to", self.idx_path)
@@ -163,8 +179,8 @@ class AnycostDirections:
         return n
 
     def calc_direction(self, label: str, force_rerun: bool = False):
-        dir_path = self.idx_path.with_suffix(
-            f"-label{label}-numexamples{self.num_examples}.safetensors"
+        dir_path = self.idx_path.with_name(
+            f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}-label{label}-numexamples{self.num_examples}.safetensors"
         )
 
         if label in self.ns.keys() and not force_rerun:
@@ -195,7 +211,7 @@ class AnycostDirections:
         """Get conditional direction."""
         n = self.calc_direction(label).delta_hs.clone()
         n_perp = n.clone()
-        if not clabels is None:
+        if clabels is not None:
             for clabel in clabels:
                 nc = self.calc_direction(clabel).delta_hs.clone()
                 n = n - (n * nc).sum() / (nc * nc).sum() * nc
