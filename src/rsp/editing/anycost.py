@@ -10,7 +10,7 @@ from PIL import Image
 from safetensors.torch import load_file, save_file
 from tqdm import tqdm
 
-from ..constants import SUPPORTED_AUS
+from ..constants import RESULTS_DIR, SUPPORTED_AUS
 from ..log_utils import log
 from ..semanticdiffusion import SemanticDiffusion
 from ..stateclass import Q
@@ -66,7 +66,7 @@ class AnycostDirections:
     def __init__(
         self,
         sd: SemanticDiffusion,
-        out_folder: Path = Path("results/anycost/"),
+        out_folder: Path = RESULTS_DIR,
         etas=None,
         batch_size: int = 1,
         num_examples: int = 100,
