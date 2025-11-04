@@ -1,7 +1,5 @@
 """AU Prediction module."""
 
-import logging
-
 import numpy as np
 import pandas as pd
 import torch
@@ -15,8 +13,6 @@ from tqdm import tqdm
 from rsp.constants import SUPPORTED_AUS
 
 from ..dataset import TensorDataset
-
-logger = logging.getLogger("rsp")
 
 
 class AUPredictor:
@@ -137,8 +133,7 @@ class AUPredictor:
         # Handle each image individually
         for image_idx in range(len(dataset)):
             image_results = results[results["frame"] == image_idx]
-            if not image_results.isnull().any().any():
-                # Face detected for this image - use the working AU extraction
+            if not image_results.isna().any().any():  # pyright: ignore[reportAttributeAccessIssue]
                 largest_face = self._filter_largest_faces(image_results)
                 au_scores = largest_face.aus
                 batch_results[image_idx] = torch.tensor(
@@ -150,19 +145,18 @@ class AUPredictor:
 
         return batch_results
 
-    def _filter_largest_faces(self, results: pd.DataFrame):
+    def _filter_largest_faces(self, results: pd.DataFrame | pd.Series) -> pd.DataFrame:
         """Filter results to keep only the largest face per image."""
-        results["face_area"] = results["FaceRectWidth"] * results["FaceRectHeight"]
+        largest_idx = (
+            results.assign(
+                face_area=results["FaceRectWidth"] * results["FaceRectHeight"]
+            )
+            .groupby("input")["face_area"]
+            .idxmax()
+        )
+        return results.loc[largest_idx].reset_index(drop=True)
 
-        # Group by image ID and keep only the row with the largest face area
-        largest_faces = results.loc[results.groupby("input")["face_area"].idxmax()]
-
-        # Drop the temporary face_area column
-        largest_faces = largest_faces.drop("face_area", axis=1).reset_index(drop=True)
-
-        return largest_faces
-
-    def _predict_batches(self) -> Fex:
+    def _predict_batches(self) -> pd.DataFrame:
         """Predicts the Facial Action Units (AUs) in a batch of images.
 
         modified from https://github.com/cosanlab/py-feat/blob/c4f6364299ea2258ae1e73ed73c95750a18bff3e/feat/detector.py#L513.
@@ -192,60 +186,13 @@ class AUPredictor:
             batch_results["input"] = np.concatenate(file_names)
             batch_results["frame"] = np.concatenate(frame_ids)
 
-            # Invert the face boxes and landmarks based on the padded output size
-            for j, frame_idx in enumerate(batch_results["frame"].unique()):
-                batch_results.loc[
-                    batch_results["frame"] == frame_idx, ["FrameHeight", "FrameWidth"]
-                ] = (
-                    compute_original_image_size(batch_data)[j, :]
-                    .repeat(
-                        len(
-                            batch_results.loc[
-                                batch_results["frame"] == frame_idx, "frame"
-                            ]
-                        ),
-                        1,
-                    )
-                    .numpy()
-                )
-                batch_results.loc[batch_results["frame"] == frame_idx, "FaceRectX"] = (
-                    batch_results.loc[batch_results["frame"] == frame_idx, "FaceRectX"]
-                    - batch_data["Padding"]["Left"].detach().numpy()[j]
-                ) / batch_data["Scale"].detach().numpy()[j]
-                batch_results.loc[batch_results["frame"] == frame_idx, "FaceRectY"] = (
-                    batch_results.loc[batch_results["frame"] == frame_idx, "FaceRectY"]
-                    - batch_data["Padding"]["Top"].detach().numpy()[j]
-                ) / batch_data["Scale"].detach().numpy()[j]
-                batch_results.loc[
-                    batch_results["frame"] == frame_idx, "FaceRectWidth"
-                ] = (
-                    (
-                        batch_results.loc[
-                            batch_results["frame"] == frame_idx, "FaceRectWidth"
-                        ]
-                    )
-                    / batch_data["Scale"].detach().numpy()[j]
-                )
-                batch_results.loc[
-                    batch_results["frame"] == frame_idx, "FaceRectHeight"
-                ] = (
-                    (
-                        batch_results.loc[
-                            batch_results["frame"] == frame_idx, "FaceRectHeight"
-                        ]
-                    )
-                    / batch_data["Scale"].detach().numpy()[j]
-                )
-
-                for i in range(68):
-                    batch_results.loc[batch_results["frame"] == frame_idx, f"x_{i}"] = (
-                        batch_results.loc[batch_results["frame"] == frame_idx, f"x_{i}"]
-                        - batch_data["Padding"]["Left"].detach().numpy()[j]
-                    ) / batch_data["Scale"].detach().numpy()[j]
-                    batch_results.loc[batch_results["frame"] == frame_idx, f"y_{i}"] = (
-                        batch_results.loc[batch_results["frame"] == frame_idx, f"y_{i}"]
-                        - batch_data["Padding"]["Top"].detach().numpy()[j]
-                    ) / batch_data["Scale"].detach().numpy()[j]
+            # since height and width are given from the diffusion model and
+            # we have no scaling or padding we just extract the original image size
+            # and since no padding or scaling we also dont need any inversion of
+            # face height + width or landmarks - was part of pyfeat code
+            _, _, height, width = batch_data["Image"].shape
+            batch_data["FrameHeight"] = height
+            batch_data["FrameWidth"] = width
 
             batch_output.append(batch_results)
             frame_counter += 1 * self.batch_size
