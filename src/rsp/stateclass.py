@@ -93,21 +93,45 @@ class Q:
 
     def to_state_dict(self) -> dict:
         """Convert the state class to a dictionary."""
+        label_bytes = self.label.encode("utf-8") if self.label else b" "
+        label_tensor = torch.frombuffer(bytearray(label_bytes), dtype=torch.uint8)
+        seed = torch.Tensor([self.seed]) if isinstance(self.seed, int) else self.seed
+
         return {
             "x0": self.x0,
             "xT": self.xT,
             "w0": self.w0,
             "wT": self.wT,
-            "zs": self.zs,
             "hs": self.hs,
-            "etas": self.etas,
-            "delta_hs": self.delta_hs,
-            "seed": self.seed,
-            "asyrp": self.asyrp,
-            "cfg_scale": self.cfg_scale,
-            "label": self.label,
+            "zs": self.zs if self.zs is not None else torch.empty(0),
+            "etas": self.etas if self.etas is not None else torch.empty(0),
+            "delta_hs": self.delta_hs if self.delta_hs is not None else torch.empty(0),
+            "seed": seed,
+            "asyrp": torch.Tensor([self.asyrp]),
+            "cfg_scale": torch.Tensor([self.cfg_scale]),
+            "label": label_tensor,
         }
 
     def from_state_dict(self, state_dict: dict) -> "Q":
         """Create a state class from a dictionary."""
-        return Q(**state_dict)
+        # Convert label tensor back to string
+        label_tensor = state_dict.get("label", torch.empty(0, dtype=torch.uint8))
+        if label_tensor.numel() > 0:
+            label = bytes(label_tensor.numpy()).decode("utf-8")
+        else:
+            label = ""
+
+        return Q(
+            x0=state_dict["x0"],
+            xT=state_dict["xT"],
+            w0=state_dict["w0"],
+            wT=state_dict["wT"],
+            zs=state_dict["zs"],
+            hs=state_dict["hs"],
+            etas=state_dict["etas"],
+            delta_hs=state_dict["delta_hs"],
+            seed=state_dict["seed"],
+            asyrp=state_dict["asyrp"],
+            cfg_scale=state_dict["cfg_scale"],
+            label=label,
+        )
