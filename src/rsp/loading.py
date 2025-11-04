@@ -1,5 +1,6 @@
 """Loading functions for the project."""
 
+import torch
 from diffusers.models.autoencoders.vq_model import VQModel
 from diffusers.models.unets.unet_2d import UNet2DModel
 from diffusers.schedulers.scheduling_ddim import DDIMScheduler
@@ -25,6 +26,12 @@ def load_model(
     Returns:
         SemanticDiffusion: The loaded semantic diffusion model.
     """
+    if device == "cuda" and not torch.cuda.is_available():
+        raise ValueError(
+            f"Device '{device}' was specified but is not available, "
+            "please check your CUDA installation, or try changing the device to 'cpu'."
+        )
+
     if model_id not in ["pixel", "ldm"]:
         raise ValueError(f"Invalid model_id: {model_id}")
 

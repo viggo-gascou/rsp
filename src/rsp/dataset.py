@@ -48,11 +48,10 @@ class TensorDataset(Dataset):
 
     def __getitem__(self, idx) -> dict[str, Any]:
         """Return a sample from the dataset."""
-        temp = {
+        return {
             "Image": self.data[idx],
             "Frame": idx,
             "FileName": "tensor",
             "Scale": 1.0,
             "Padding": {"Left": 0, "Top": 0, "Right": 0, "Bottom": 0},
         }
-        return temp
