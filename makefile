@@ -30,7 +30,6 @@ install: ## Install dependencies
 	@echo "Installing the project..."
 	@$(MAKE) --quiet install-uv
 	@$(MAKE) --quiet install-dependencies
-	@$(MAKE) --quiet setup-environment
 	@$(MAKE) --quiet install-pre-commit
 	@echo "Installed the project."
 
@@ -47,23 +46,9 @@ install-dependencies:
 	@uv python install 3.11
 	@uv sync --no-dev --python 3.11
 
-setup-environment:
-	@uv run python src/scripts/setup_env.py
-
 install-pre-commit:
 	@uv run pre-commit install
 	@uv run pre-commit autoupdate
 
 setup-remote: ## Setup environment on remote machine
-	@if [ -z "$(REMOTE)" ]; then \
-		echo "Error: REMOTE variable not set. Usage: make setup-remote REMOTE=user@host"; \
-		exit 1; \
-	fi
-	@echo "Setting up remote machine: $(REMOTE)"
-	@echo "Cloning repository: $(REPO)"
-	@ssh $(REMOTE) "git clone $(REPO) ~/project 2>/dev/null || (cd ~/project && git pull)"
-	@echo "Copying .env file..."
-	@scp .env $(REMOTE):~/project/.env
-	@echo "Running installation..."
-	@ssh $(REMOTE) "cd ~/project && make install"
-	@echo "Setup complete!"
+	@uv run python src/scripts/setup_remote.py $(REMOTE)
