@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 
 from fabric import Connection
 
-from rsp import log, set_logging_level
+from rsp import BASE_DIR, log, set_logging_level
 
 set_logging_level(logging.INFO)
 
@@ -94,11 +94,23 @@ def setup_remote():
     log(f"Cloning repository: {REPO}", level=logging.INFO)
 
     with Connection(REMOTE) as c:
-        c.run(f"git clone {REPO} {REPO_PATH}")
+        # check if dir exists
+        result = c.run(f"test -d {REPO_PATH}", warn=True)
+        if result.exited == 0:
+            log(f"Repository already exists at {REPO_PATH}", level=logging.WARNING)
+        else:
+            c.run(f"git clone {REPO} {REPO_PATH}")
+
+        if "~" in REPO_PATH:
+            REPO_PATH = f"/home/{c.user}/{REPO_PATH.strip('~/')}"
+
+        # Update system dependencies and install GitHub CLI
+        log("Installing GitHub CLI...", level=logging.INFO)
+        c.sudo("apt install gh -y", hide=True)
 
         with c.cd(REPO_PATH):
             log("Copying .env file...", level=logging.INFO)
-            c.put(".env", f"{REPO_PATH}/.env")
+            c.put(local=str(BASE_DIR / ".env"), remote=f"{REPO_PATH}/.env")
 
             log("Setting up git authentication...", level=logging.INFO)
             c.run(f"git config --global user.email '{GIT_EMAIL}'")
@@ -109,10 +121,6 @@ def setup_remote():
                 c.run(f"git config --global user.signingkey {GIT_SIGNING_KEY}")
                 c.run(f"git config --global commit.gpgsign true")
                 c.run(f"git config --global gpg.format ssh")
-
-            # Update system dependencies and install GitHub CLI
-            log("Installing GitHub CLI...", level=logging.INFO)
-            c.sudo("apt update && apt upgrade -y && apt install gh -y")
 
             log("Setting up GitHub authentication...", level=logging.INFO)
             c.run("gh auth login -p https -w", pty=True)
