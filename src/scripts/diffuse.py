@@ -28,14 +28,14 @@ q_original = sd.sample(
 )  # All information about a sample is contained in the Q object
 img_original = sd.show(q_original)  # Easy decoding and conversion to PIL.Image
 plt.imshow(img_original)
+plt.savefig("original.png")
 plt.show()
 
 # Edit Age
 label = "AU01"
 n = ad.get_direction(label)
-q_edit = sd.apply_direction(q_original.copy(), n, scale=-0.6)
+q_edit = sd.apply_direction(q_original.copy(), n, scale=0.6)
 img_edit_age = sd.show(q_edit)
-
 plt.imshow(img_edit_age)
+plt.savefig("edit_AU01.png")
 plt.show()
-print(q_original.hs.shape)
