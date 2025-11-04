@@ -204,7 +204,7 @@ class AnycostDirections:
         if self.etas is not None:
             n.zs = torch.zeros_like(q.zs)
 
-        for seed_pos, seed_neg in tqdm(zip(pos_idx, neg_idx)):
+        for seed_pos, seed_neg in tqdm(zip(pos_idx, neg_idx), total=self.num_examples):
             q_pos = self.sd.sample(seed=seed_pos, etas=self.etas)
             q_neg = self.sd.sample(seed=seed_neg, etas=self.etas)
             if self.sd.vqvae is not None:
