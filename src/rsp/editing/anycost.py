@@ -66,7 +66,7 @@ class AnycostDirections:
     def __init__(
         self,
         sd: SemanticDiffusion,
-        out_folder: Path = RESULTS_DIR,
+        out_folder: Path = Path(RESULTS_DIR, "anycost"),
         etas=None,
         batch_size: int = 1,
         num_examples: int = 100,
