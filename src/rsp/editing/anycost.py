@@ -6,16 +6,16 @@ import typing as t
 from pathlib import Path
 
 import torch
+from PIL import Image
 from safetensors.torch import load_file, save_file
 from tqdm import tqdm
 
 from ..constants import SUPPORTED_AUS
+from ..log_utils import log
 from ..semanticdiffusion import SemanticDiffusion
 from ..stateclass import Q
 from ..utils import image_grid
 from .predictor import AUPredictor
-
-logger = logging.getLogger("rsp")
 
 
 class AnycostPredictor:
@@ -94,7 +94,9 @@ class AnycostDirections:
             f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}.safetensors",
         )
         self.batch_size = batch_size
-        self.attrs = self.get_attrs(etas=self.etas)
+        attr_results = self.get_attrs(etas=self.etas)
+        self.attrs = attr_results["attr"]
+        self.attr_idxs = attr_results["idx"]
         self.ns = {}
 
     def compute_test_directions(self):
@@ -107,13 +109,27 @@ class AnycostDirections:
         for label in self.conf_labels:
             self.calc_direction(label)
 
-    def get_attrs(self, force_rerun=False, etas=None):
-        if os.path.exists(self.idx_path) and not force_rerun:
-            logger.info("Anycost attributes index loaded from", self.idx_path)
-            return load_file(self.idx_path)["attr"]
+    def get_attrs(self, force_rerun=False, etas=None) -> dict[str, torch.Tensor]:
+        """Get the attributes for the labels.
 
-        logger.info("Calculating attribute index to", self.idx_path)
-        results = {"attr": torch.zeros((self.idx_size, len(self.attr_list)))}
+        Args:
+            force_rerun: Whether to force the recalculation of the attributes.
+            etas (optional): The eta values to use for the calculation.
+
+        Returns:
+            dict: The attributes for the labels.
+        """
+        if os.path.exists(self.idx_path) and not force_rerun:
+            log(
+                f"Anycost attributes index loaded from {self.idx_path}",
+                level=logging.INFO,
+            )
+            return load_file(self.idx_path)
+
+        log(f"Calculating attribute index to {self.idx_path}", level=logging.INFO)
+        results = {
+            "attr": torch.zeros((self.idx_size, len(self.attr_list))),
+        }
 
         if self.batch_size > 1:
             for i in tqdm(range(0, self.idx_size, self.batch_size)):
@@ -131,24 +147,48 @@ class AnycostDirections:
 
                 results["attr"][i : i + 1] = self.ap(q.x0.float(), batch_size=1)
 
+        # get valid indices, where the results are not -1
+        valid_indices = torch.where((results["attr"] != -1).all(dim=1))[0]
+        results["idx"] = valid_indices
+
         save_file(results, self.idx_path)
-        logger.info("Anycost attributes index saved to", self.idx_path)
-        return results["attr"]
+        log(f"Anycost attributes index saved to {self.idx_path}", level=logging.INFO)
+        return results
 
     def get_attr_values(self, label):
+        """Get the attribute values for a given label.
+
+        Args:
+            label: The label of the attribute.
+
+        Returns:
+            torch.Tensor: The attribute values for the given label.
+        """
         attr_idx = self.attr_list.index(label)
         value = self.attrs[:, attr_idx]
         return value
 
     def get_idx_for_attr(self, label):
+        """Get the indices for a given attribute.
+
+        Args:
+            label: The label of the attribute.
+
+        Returns:
+            tuple: The positive and negative indices for the given attribute.
+        """
         attr_values = self.get_attr_values(label)
-        sort_idx = torch.argsort(attr_values)
-        neg_idx = sort_idx[: self.num_examples]
-        pos_idx = sort_idx[-self.num_examples :]
+        # handle -1 by using the self.atrr_idx which contains only the valid indices
+        valid_attr_values = attr_values[self.attr_idxs]
+        # sort the valid attribute values
+        sort_idx = torch.argsort(valid_attr_values)
+        # map back to original indices
+        neg_idx = self.attr_idxs[sort_idx[: self.num_examples]]
+        pos_idx = self.attr_idxs[sort_idx[-self.num_examples :]]
         return pos_idx, neg_idx
 
     def _calc_direction(self, label):
-        logger.info("[INFO] Calculating", label)
+        log(f"Calculating {label}", level=logging.INFO)
 
         pos_idx, neg_idx = self.get_idx_for_attr(label)
         num_samples = len(pos_idx)
@@ -178,15 +218,25 @@ class AnycostDirections:
             n.delta_hs += (q_pos.hs - q_neg.hs) / num_samples
         return n
 
-    def calc_direction(self, label: str, force_rerun: bool = False):
+    def calc_direction(self, label: str, force_rerun: bool = False) -> Q:
+        """Calculate the direction for a given label.
+
+        Args:
+            label: The label of the direction.
+            force_rerun: Whether to force a re-run of the calculation.
+
+        Returns:
+            Q: The calculated direction.
+        """
         dir_path = self.idx_path.with_name(
-            f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}-label{label}-numexamples{self.num_examples}.safetensors"
+            f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}"
+            f"-label{label}-numexamples{self.num_examples}.safetensors"
         )
 
         if label in self.ns.keys() and not force_rerun:
             return self.ns[label]
         elif os.path.exists(dir_path) and not force_rerun:
-            logger.info(f"Loading {dir_path}")
+            log(f"Loading {dir_path}", level=logging.INFO)
             n = Q().from_state_dict(load_file(dir_path))
             self.ns[label] = n
             return n
@@ -195,10 +245,11 @@ class AnycostDirections:
 
         self.ns[label] = n
         save_file(n.to_state_dict(), dir_path)
-        logger.info(f"Saved to {dir_path}")
+        log(f"Saved to {dir_path}", level=logging.INFO)
         return n
 
-    def plot_test_directions(self, q):
+    def plot_test_directions(self, q: Q) -> Image.Image:
+        """Plot test directions."""
         imgs = [
             self.sd.interpolate_direction(
                 q, self.calc_direction(label), space="hspace", t1=-1, t2=1, numsteps=5
@@ -230,7 +281,10 @@ class AnycostDirections:
         primal = primal.flatten()
 
         N = torch.cat(
-            [self.get_direction(l).delta_hs.flatten().unsqueeze(0) for l in clabels]
+            [
+                self.get_direction(label).delta_hs.flatten().unsqueeze(0)
+                for label in clabels
+            ]
         )
         A = N @ N.T
         B = N @ primal
@@ -238,7 +292,7 @@ class AnycostDirections:
         x = torch.linalg.solve(A, B)
 
         new = primal - x @ N
-        # new = primal - N.T @  torch.linalg.inv(A) @ B (fails on machines with low memory)
+        # new = primal - N.T @  torch.linalg.inv(A) @ B (fails on machines with low mem)
         new = new.reshape(primal_shape)
 
         return Q(delta_hs=new)
