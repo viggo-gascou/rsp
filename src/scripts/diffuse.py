@@ -8,7 +8,7 @@ from rsp.log_utils import set_logging_level
 
 set_logging_level(logging.INFO)
 
-sd = load_model("pixel", device="cuda", h_space="after", num_inference_steps=100)
+sd = load_model("ldm", device="cuda", h_space="after", num_inference_steps=100)
 
 # h_space Is the sementic latent space defined as ["before", middle","after"] the
 # middle convolution in the U-net
@@ -26,12 +26,10 @@ ad = AnycostDirections(
 q_original = sd.sample(
     seed=42
 )  # All information about a sample is contained in the Q object
-img_original = sd.show(q_original)  # Easy decoding and conversion to PIL.Image
-plt.imshow(img_original)
-plt.savefig("original.png")
-plt.show()
+img_original = sd.show(q_original)
+img_original.save(f"original_image.png")
 
-# Edit Age
+# Edit AU01
 label = "AU01"
 n = ad.get_direction(label)
 q_edit = sd.apply_direction(q_original.copy(), n, scale=0.6)
