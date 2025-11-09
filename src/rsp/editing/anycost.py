@@ -25,16 +25,18 @@ class AnycostPredictor:
         self,
         device: str | torch.device = "cuda",
         estimator: t.Optional[AUPredictor] = None,
+        **kwargs,
     ):
         """Initialize the AnycostPredictor class.
 
         Args:
             device (str): Device to use for computation.
             estimator (AUPredictor): Attribute predictor.
+            **kwargs: Additional keyword arguments, passed to the estimator.
         """
         self.device = device
         if estimator is None:
-            self.estimator = AUPredictor(device=str(device))
+            self.estimator = AUPredictor(device=str(device), **kwargs)
         else:
             self.estimator = estimator
 
@@ -51,9 +53,9 @@ class AnycostPredictor:
             torch.Tensor: Attribute scores for all of the input images.
         """
         # Unnormalize the images from [-1, 1] to [0, 255] for the predictor
-        # by first mapping to [0, 1], then to [0, 255] and clamping
+        # by first mapping to [0, 2], then to [0, 255] and clamping
         # finally move to CPU since predictor will move it to GPU itself.
-        imgs = ((imgs + 1.0) / 2.0 * 255.0).clamp(0, 255).cpu()
+        imgs = imgs.add(1).mul(127.5).clamp(0, 255).cpu()
 
         attr_preds = self.estimator.predict(images=imgs, batch_size=batch_size)
 
@@ -87,7 +89,7 @@ class AnycostDirections:
 
         self.test_labels = NotImplemented
         self.conf_labels = NotImplemented
-        self.ap = AnycostPredictor(device=self.device)
+        self.ap = AnycostPredictor(device=self.device, progress_bar=False)
         self.etas = etas
         self.idx_path = Path(
             self.out_folder,
