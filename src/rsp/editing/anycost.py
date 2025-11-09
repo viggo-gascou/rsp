@@ -153,6 +153,13 @@ class AnycostDirections:
         valid_indices = torch.where((results["attr"] != -1).all(dim=1))[0]
         results["idx"] = valid_indices
 
+        num_invalid = self.idx_size - valid_indices.numel()
+        if num_invalid > 0:
+            log(
+                f"Skipped {num_invalid} images where AU detection failed!",
+                level=logging.WARNING,
+            )
+
         save_file(results, self.idx_path)
         log(f"Anycost attributes index saved to {self.idx_path}", level=logging.INFO)
         return results

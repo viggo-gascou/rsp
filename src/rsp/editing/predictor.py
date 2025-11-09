@@ -4,14 +4,10 @@ import numpy as np
 import pandas as pd
 import torch
 from feat import Detector
-from feat.data import Fex
-from feat.utils.image_operations import compute_original_image_size
 from torch.utils.data.dataloader import DataLoader
-from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 
-from rsp.constants import SUPPORTED_AUS
-
+from ..constants import SUPPORTED_AUS
 from ..dataset import TensorDataset
 
 
@@ -140,7 +136,7 @@ class AUPredictor:
                     au_scores.values, dtype=torch.float32
                 )
             else:
-                # Probably no face detected, skip this image and set -1 for all AUs
+                # Probably no face detected, skip this image
                 continue
 
         return batch_results
