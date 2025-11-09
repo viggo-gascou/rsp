@@ -41,6 +41,7 @@ def load_model(
             model_id, use_safetensors=False, device_map=device
         )
         scheduler = DDIMScheduler.from_pretrained(model_id)
+        vqvae = None
     elif "ldm" == model_id:
         model_id = "CompVis/ldm-celebahq-256"
         vqvae = VQModel.from_pretrained(model_id, subfolder="vqvae", device_map=device)
@@ -50,8 +51,6 @@ def load_model(
         scheduler = DDIMScheduler.from_pretrained(model_id, subfolder="scheduler")
     else:
         raise ValueError(f"Invalid model_id: {model_id}")
-
-    vqvae = None
 
     unet = UNet(model, h_space=h_space)
     sd = SemanticDiffusion(
