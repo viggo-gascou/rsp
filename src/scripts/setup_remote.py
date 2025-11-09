@@ -91,16 +91,17 @@ def setup_remote():
     check_args(args)
 
     log(f"Setting up remote machine: {REMOTE}", level=logging.INFO)
-    log(f"Cloning repository: {REPO}", level=logging.INFO)
 
     with Connection(REMOTE) as c:
         # check if dir exists
+        log(f"Cloning repository: {REPO}", level=logging.INFO)
         result = c.run(f"test -d {REPO_PATH}", warn=True)
-        if result.exited == 0:
+        if result.return_code == 0:
             log(f"Repository already exists at {REPO_PATH}", level=logging.WARNING)
         else:
             c.run(f"git clone {REPO} {REPO_PATH}")
 
+        # Parse repository path
         if "~" in REPO_PATH:
             REPO_PATH = f"/home/{c.user}/{REPO_PATH.strip('~/')}"
 
@@ -128,7 +129,7 @@ def setup_remote():
             log("Installing the project and its dependencies...", level=logging.INFO)
             c.run("make install")
 
-    log("Setup complete!", level=logging.INFO)
+    log(f"Setup for remote `{REMOTE}` is complete!", level=logging.INFO)
 
 
 if __name__ == "__main__":
