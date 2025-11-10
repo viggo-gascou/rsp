@@ -2,6 +2,7 @@
 
 import logging
 import os
+import pickle
 import typing as t
 from pathlib import Path
 
@@ -213,7 +214,14 @@ class AnycostDirections:
         if self.etas is not None:
             n.zs = torch.zeros_like(q.zs)
 
-        for seed_pos, seed_neg in tqdm(zip(pos_idx, neg_idx), total=self.num_examples):
+        convergence_dict = {}  # Unnused if not changed in for loop
+        convergence_test = False  # Setting this here to avoid saving
+        # as default, but can be used if you
+        # want to track convergence
+
+        for step_i, (seed_pos, seed_neg) in tqdm(
+            zip(pos_idx, neg_idx), total=self.num_examples
+        ):
             q_pos = self.sd.sample(seed=seed_pos, etas=self.etas)
             q_neg = self.sd.sample(seed=seed_neg, etas=self.etas)
             if self.sd.vqvae is not None:
@@ -225,6 +233,16 @@ class AnycostDirections:
 
             n.x0 += (q_pos.x0 - q_neg.x0) / num_samples
             n.delta_hs += (q_pos.hs - q_neg.hs) / num_samples
+
+            if convergence_test:
+                convergence_dict[step_i] = n.delta_hs.detach().cpu().clone()
+
+        if convergence_test:
+            pkl_path = self.out_folder / f"convergence_{label}.pkl"
+            with open(pkl_path, "wb") as f:
+                pickle.dump(convergence_dict, f)
+            log(f"Saved convergence dict {label} to {pkl_path}", level=logging.INFO)
+
         return n
 
     def calc_direction(self, label: str, force_rerun: bool = False) -> Q:
