@@ -1,5 +1,7 @@
 """AU Prediction module."""
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import torch
@@ -66,6 +68,14 @@ class AUPredictor:
         self.pin_memory = pin_memory
         self.batch_size = batch_size
         self.progress_bar = progress_bar
+
+        # Suppress XGBoost serialization warning from skops
+        warnings.filterwarnings(
+            "ignore",
+            message=".*serialized model",
+            category=UserWarning,
+            module=".*skops",
+        )
 
         self.model = Detector(
             landmark_model=landmark_model,
