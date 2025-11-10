@@ -27,13 +27,19 @@ q_original = sd.sample(
     seed=42
 )  # All information about a sample is contained in the Q object
 img_original = sd.show(q_original)
-img_original.save(f"original_image.png")
+img_original.save(f"pixel_original_image.png")
 
 # Edit AU01
-label = "AU01"
+label = "AU12"
 n = ad.get_direction(label)
-q_edit = sd.apply_direction(q_original.copy(), n, scale=0.6)
+q_edit = sd.apply_direction(q_original.copy(), n, scale=5)
 img_edit_age = sd.show(q_edit)
-plt.imshow(img_edit_age)
-plt.savefig("edit_AU01.png")
-plt.show()
+img_edit_age.save("pixel_AU12_edited_image.png")
+
+clabels = ["AU04"]
+n = ad.get_cond_dir(
+    label, clabels
+)  # Direction for smile with the direction for gender projected away
+q_edit_smile_cond_au = sd.apply_direction(q_original.copy(), n, scale=0.3)
+img_edit_cond_au = sd.show(q_edit_smile_cond_au)
+img_edit_cond_au.save("pixel_AU12_cond_AU04_image.png")
