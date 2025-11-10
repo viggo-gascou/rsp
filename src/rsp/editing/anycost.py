@@ -282,7 +282,7 @@ class AnycostDirections:
 
     def get_cond_dir(self, label, clabels):
         """Following https://github.com/genforce/interfacegan/blob/8da3fc0fe2a1d4c88dc5f9bee65e8077093ad2bb/utils/manipulator.py#L190."""
-        primal = self.get_direction(label).delta_hs
+        primal = self.get_direction(label).delta_hs.to(self.device)
         if clabels is None or clabels == []:
             return Q(delta_hs=primal)
 
@@ -291,7 +291,10 @@ class AnycostDirections:
 
         N = torch.cat(
             [
-                self.get_direction(label).delta_hs.flatten().unsqueeze(0)
+                self.get_direction(label)
+                .delta_hs.to(self.device)
+                .flatten()
+                .unsqueeze(0)
                 for label in clabels
             ]
         )
