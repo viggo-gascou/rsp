@@ -43,3 +43,6 @@ n = ad.get_cond_dir(
 q_edit_smile_cond_au = sd.apply_direction(q_original.copy(), n, scale=0.3)
 img_edit_cond_au = sd.show(q_edit_smile_cond_au)
 img_edit_cond_au.save("pixel_AU12_cond_AU04_image.png")
+
+
+# now do the same as above but set num_examples to 10 to get worse quality (dont )
