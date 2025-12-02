@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
 import torch
 from safetensors.torch import load_file
 
@@ -8,10 +9,11 @@ pre_path = "../rsp/results/anycost"
 p = "/google-ddpm-ema-celebahq-256steps100-"
 pth = "hspace-after-etasNone-idxsize10000.safetensors"
 
-# open the torch file its not weights its just tensors
 data = load_file(f"{pre_path}{p}{pth}", device="cpu")
 
+
 attr = data["attr"]
+attr = attr[attr[:, 0] != -1]
 
 aus = SUPPORTED_AUS
 
@@ -19,12 +21,17 @@ aus = SUPPORTED_AUS
 # function that given a column of data returns the histogram of data
 def get_au_histogram(au_column, name):
     plt.figure()
-    plt.hist(au_column.numpy(), bins=50, density=True, alpha=0.75)
-    plt.title(f"Histogram of {name}")
-    plt.xlabel("Value")
-    plt.ylabel("Density")
-    plt.grid(True)
-    plt.savefig(f"{name}_histogram.png")
+    sns.histplot(
+        au_column.numpy(), bins=100, stat="percent", kde=False, element="step", alpha=1
+    )
+    plt.xlabel("Intensity", fontsize=20)
+    plt.ylabel("Percent", fontsize=20)
+    plt.grid(False)
+    plt.xlim(-0.01, 1.01)
+    plt.yticks(fontsize=15)
+    plt.xticks(fontsize=15)
+    plt.tight_layout()
+    plt.savefig(f"{name}_histogram.png", bbox_inches="tight")
     plt.close()
     return
 
