@@ -214,7 +214,10 @@ class AnycostDirections:
         if self.etas is not None:
             n.zs = torch.zeros_like(q.zs)
 
-        convergence_dict = {}  # Unnused if not changed in for loop
+        convergence_dict = {
+            # num_samples x each is n.hs size
+            "steps_delta_hs": torch.zeros(num_samples, n.hs.shape[0], n.hs.shape[1])
+        }  # Unnused if not changed in for loop
         convergence_test = False  # Setting this here to avoid saving
         # as default, but can be used if you
         # want to track convergence
@@ -235,13 +238,17 @@ class AnycostDirections:
             n.delta_hs += (q_pos.hs - q_neg.hs) / num_samples
 
             if convergence_test:
-                convergence_dict[step_i] = n.delta_hs.detach().cpu().clone()
+                convergence_dict["steps_delta_hs"][step_i] = (
+                    n.delta_hs.detach().cpu().clone() * num_samples
+                ) / step_i
 
         if convergence_test:
-            pkl_path = self.out_folder / f"convergence_{label}.pkl"
-            with open(pkl_path, "wb") as f:
-                pickle.dump(convergence_dict, f)
-            log(f"Saved convergence dict {label} to {pkl_path}", level=logging.INFO)
+            convergence_path = self.out_folder / f"convergence_{label}.safetensors"
+            save_file(convergence_dict, convergence_path)
+            log(
+                f"Saved convergence dict {label} to {convergence_path}",
+                level=logging.INFO,
+            )
 
         return n
 
