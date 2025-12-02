@@ -183,3 +183,5 @@ cython_debug/
 ## Project specific
 test/*
 data/*
+
+.DS_Store
