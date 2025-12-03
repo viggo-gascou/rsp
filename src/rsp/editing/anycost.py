@@ -222,8 +222,8 @@ class AnycostDirections:
         # as default, but can be used if you
         # want to track convergence
 
-        for step_i, (seed_pos, seed_neg) in tqdm(
-            zip(pos_idx, neg_idx), total=self.num_examples
+        for step_i, (seed_pos, seed_neg) in enumerate(
+            tqdm(zip(pos_idx, neg_idx), total=self.num_examples)
         ):
             q_pos = self.sd.sample(seed=seed_pos, etas=self.etas)
             q_neg = self.sd.sample(seed=seed_neg, etas=self.etas)
