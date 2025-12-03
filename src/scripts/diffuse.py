@@ -2,13 +2,14 @@ import logging
 
 import matplotlib.pyplot as plt
 
+from rsp.constants import AU_SUBSET
 from rsp.editing import AnycostDirections
 from rsp.loading import load_model
 from rsp.log_utils import set_logging_level
 
 set_logging_level(logging.INFO)
 
-sd = load_model("ldm", device="cuda", h_space="after", num_inference_steps=100)
+sd = load_model("pixel", device="cuda", h_space="after", num_inference_steps=100)
 
 # h_space Is the sementic latent space defined as ["before", middle","after"] the
 # middle convolution in the U-net
@@ -21,7 +22,6 @@ ad = AnycostDirections(
     idx_size=10000,  # Size of index. The number of images sampled in total
     batch_size=32,
 )
-
 
 q_original = sd.sample(
     seed=42
@@ -43,6 +43,3 @@ n = ad.get_cond_dir(
 q_edit_smile_cond_au = sd.apply_direction(q_original.copy(), n, scale=0.3)
 img_edit_cond_au = sd.show(q_edit_smile_cond_au)
 img_edit_cond_au.save("pixel_AU12_cond_AU04_image.png")
-
-
-# now do the same as above but set num_examples to 10 to get worse quality (dont )
