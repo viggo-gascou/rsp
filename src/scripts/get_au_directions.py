@@ -20,4 +20,7 @@ ad = AnycostDirections(
 for au in AU_SUBSET:
     ad.get_direction(au)
 
-log(f"Successfully, extracted directions for all AUs in 'AU_SUBSET' ({AU_SUBSET})")
+log(
+    f"Successfully, extracted directions for all AUs in 'AU_SUBSET' ({AU_SUBSET})",
+    logging.INFO,
+)
