@@ -5,7 +5,7 @@ from safetensors.torch import load_file
 
 from rsp.constants import *
 
-pre_path = "../rsp/results/anycost"
+pre_path = f"{RESULTS_DIR}/anycost"
 p = "/google-ddpm-ema-celebahq-256steps100-"
 pth = "hspace-after-etasNone-idxsize10000.safetensors"
 
