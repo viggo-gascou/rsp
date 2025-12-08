@@ -1,0 +1,40 @@
+direction: right
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+base: Py-Feat Detection Pipeline {
+  style: {
+    bold: true
+  }
+}
+base.*.shape: step
+base.*.style.bold: true
+*.style.border-radius: 10
+*.style.bold: true
+
+base.fd: Face Detection and Pose Estimation {tooltip: 1}
+base.ld: Facial Landmark Detection {tooltip: 2}
+base.au: Action Unit Detection {tooltip: 3}
+base.ed: Emotion Detection {tooltip: 4}
+base.id: Identity Detection {tooltip: 5}
+
+base.fd -> base.ld
+base.ld -> base.au
+base.ld -> base.ed
+base.ld -> base.id
+
+base.au -> Output
+base.ed -> Output
+base.id -> Output
+
+Output: Output {tooltip: 6}
+Output.desc: |`md
+  - Head and Face pose
+  - Face bounding box
+  - Facial Landmarks
+  - **Action Unit Scores**
+  - Emotion Scores
+  - Identity
+`|
