@@ -239,8 +239,8 @@ class AnycostDirections:
 
             if convergence_test:
                 convergence_dict["steps_delta_hs"][step_i] = (
-                    n.delta_hs.detach().cpu().clone() * num_samples
-                ) / step_i
+                    n.delta_hs.detach().cpu().clone()
+                )
 
         if convergence_test:
             convergence_path = self.out_folder / f"convergence_{label}.safetensors"
