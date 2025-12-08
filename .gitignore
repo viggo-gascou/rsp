@@ -184,4 +184,6 @@ cython_debug/
 test/*
 data/*
 
+results/final_results/**/*.png
+
 .DS_Store
