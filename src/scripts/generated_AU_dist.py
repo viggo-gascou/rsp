@@ -3,7 +3,7 @@ import seaborn as sns
 import torch
 from safetensors.torch import load_file
 
-from rsp.constants import *
+from rsp.constants import FIGURES_DIR, RESULTS_DIR, SUPPORTED_AUS
 
 pre_path = f"{RESULTS_DIR}/anycost"
 p = "/google-ddpm-ema-celebahq-256steps100-"
@@ -31,7 +31,7 @@ def get_au_histogram(au_column, name):
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
     plt.tight_layout()
-    plt.savefig(f"{name}_histogram.png", bbox_inches="tight")
+    plt.savefig(FIGURES_DIR / f"{name}_histogram.png", bbox_inches="tight")
     plt.close()
     return
 

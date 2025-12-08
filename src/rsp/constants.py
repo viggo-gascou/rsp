@@ -5,8 +5,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent.parent.parent
 
 RESULTS_DIR = BASE_DIR / "results"
+FIGURES_DIR = RESULTS_DIR / "figures"
+
 if not RESULTS_DIR.exists():
     RESULTS_DIR.mkdir()
+if not FIGURES_DIR.exists():
+    FIGURES_DIR.mkdir()
 
 AU_TO_FACS_MAP = {
     "AU01": "Inner Brow Raiser",
