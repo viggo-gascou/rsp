@@ -235,12 +235,14 @@ class AnycostDirections:
                 n.zs += (q_pos.zs - q_neg.zs) / num_samples
 
             n.x0 += (q_pos.x0 - q_neg.x0) / num_samples
-            n.delta_hs += (q_pos.hs - q_neg.hs) / num_samples
+            n.delta_hs += q_pos.hs - q_neg.hs
 
             if convergence_test:
                 convergence_dict["steps_delta_hs"][step_i] = (
-                    n.delta_hs.detach().cpu().clone()
+                    n.delta_hs.detach().cpu().clone() / step_i
                 )
+
+        n.delta_hs /= num_samples
 
         if convergence_test:
             convergence_path = self.out_folder / f"convergence_{label}.safetensors"
