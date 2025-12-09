@@ -218,7 +218,7 @@ class AnycostDirections:
             # num_samples x each is n.hs size
             "steps_delta_hs": torch.zeros(num_samples, *n.hs.shape)
         }  # Unnused if not changed in for loop
-        print(convergence_dict["steps_delta_hs"].shape)
+
         convergence_test = True  # Setting this here to avoid saving
         # as default, but can be used if you
         # want to track convergence
