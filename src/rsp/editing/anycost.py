@@ -216,9 +216,10 @@ class AnycostDirections:
 
         convergence_dict = {
             # num_samples x each is n.hs size
-            "steps_delta_hs": torch.zeros(num_samples, n.hs.shape[0], n.hs.shape[1])
+            "steps_delta_hs": torch.zeros(num_samples, *n.hs.shape)
         }  # Unnused if not changed in for loop
-        convergence_test = False  # Setting this here to avoid saving
+        print(convergence_dict["steps_delta_hs"].shape)
+        convergence_test = True  # Setting this here to avoid saving
         # as default, but can be used if you
         # want to track convergence
 
@@ -303,8 +304,6 @@ class AnycostDirections:
                 nc = self.calc_direction(clabel).delta_hs.clone()
                 n = n - (n * nc).sum() / (nc * nc).sum() * nc
 
-            for clabel in clabels:
-                nc = self.calc_direction(clabel).delta_hs.clone()
         return Q(delta_hs=n)
 
     def get_cond_dir(self, label, clabels):
