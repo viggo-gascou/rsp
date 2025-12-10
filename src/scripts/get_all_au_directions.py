@@ -1,6 +1,9 @@
 import logging
+from pathlib import Path
 
-from rsp.constants import AU_SUBSET
+from tqdm import tqdm
+
+from rsp.constants import RESULTS_DIR, SUPPORTED_AUS
 from rsp.editing import AnycostDirections
 from rsp.loading import load_model
 from rsp.log_utils import log, set_logging_level
@@ -17,10 +20,10 @@ ad = AnycostDirections(
     batch_size=32,
 )
 
-for au in AU_SUBSET:
+for au in tqdm(
+    SUPPORTED_AUS,
+    desc="Extracting directions",
+):
     ad.get_direction(au)
 
-log(
-    f"Successfully, extracted directions for all AUs in 'AU_SUBSET' ({AU_SUBSET})",
-    logging.INFO,
-)
+log(f"Successfully, extracted directions for all AUs ({SUPPORTED_AUS})", logging.INFO)
