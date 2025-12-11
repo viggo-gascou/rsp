@@ -20,6 +20,11 @@ aus = SUPPORTED_AUS
 
 # function that given a column of data returns the histogram of data
 def get_au_histogram(au_column, name):
+    """Docstring for get_au_histogram.
+
+    :param au_column: Description
+    :param name: Description
+    """
     plt.figure()
     sns.histplot(
         au_column.numpy(), bins=100, stat="percent", kde=False, element="step", alpha=1
