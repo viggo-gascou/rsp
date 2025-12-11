@@ -186,7 +186,6 @@ data/*
 
 results/final_results/**/*.png
 
-results/anycost/*numexamples*.safetensors
-results/anycost/convergence_*.safetensors
+results/anycost/
 
 .DS_Store
