@@ -25,6 +25,8 @@ REPO ?= https://github.com/viggo-gascou/rsp.git
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+fetch-directions:
+	@uv run hf download --local-dir results/anycost/ viga-rsp/anycost-directions
 
 install: ## Install dependencies
 	@echo "Installing the project..."
