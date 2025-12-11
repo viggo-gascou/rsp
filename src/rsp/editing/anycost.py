@@ -227,14 +227,15 @@ class AnycostDirections:
         if self.etas is not None:
             n.zs = torch.zeros_like(q.zs)
 
-        convergence_dict = {
-            # num_samples x each is n.hs size
-            "steps_delta_hs": torch.zeros(num_samples, *n.hs.shape)
-        }  # Unnused if not changed in for loop
-
         convergence_test = True  # Setting this here to avoid saving
         # as default, but can be used if you
         # want to track convergence
+
+        if convergence_test:
+            convergence_dict = {
+                # num_samples x each is n.hs size
+                "steps_delta_hs": torch.zeros(num_samples, *n.hs.shape)
+            }  # Unnused if not changed in for loop
 
         for step_i, (seed_pos, seed_neg) in enumerate(
             tqdm(zip(pos_idx, neg_idx), total=self.num_examples)
@@ -252,7 +253,7 @@ class AnycostDirections:
             n.delta_hs += q_pos.hs - q_neg.hs
 
             if convergence_test:
-                convergence_dict["steps_delta_hs"][step_i] = (
+                convergence_dict["steps_delta_hs"][step_i] = (  # pyright: ignore [reportPossiblyUnboundVariable]
                     n.delta_hs.detach().cpu().clone() / step_i
                 )
 
@@ -260,6 +261,8 @@ class AnycostDirections:
 
         if convergence_test:
             convergence_path = self.out_folder / "convergence" / f"{label}.safetensors"
+            if not convergence_path.parent.exists():
+                convergence_path.parent.mkdir(parents=True)
             save_file(convergence_dict, convergence_path)
             log(
                 f"Saved convergence dict {label} to {convergence_path}",
@@ -279,6 +282,8 @@ class AnycostDirections:
             Q: The calculated direction.
         """
         dir_path = self.out_folder / "directions" / f"{label}.safetensors"
+        if not dir_path.parent.exists():
+            dir_path.parent.mkdir(parents=True)
 
         if label in self.ns.keys() and not force_rerun:
             return self.ns[label]
@@ -318,6 +323,13 @@ class AnycostDirections:
 
     def get_cond_dir(self, label, clabels):
         """Following https://github.com/genforce/interfacegan/blob/8da3fc0fe2a1d4c88dc5f9bee65e8077093ad2bb/utils/manipulator.py#L190."""
+        cond_path = self.out_folder / "disentangled" / f"{label}.safetensors"
+        if not cond_path.parent.exists():
+            cond_path.parent.mkdir(parents=True)
+        if cond_path.exists():
+            log(f"Loading condition from {cond_path}", logging.INFO)
+            return Q().from_state_dict(load_file(cond_path))
+
         primal = self.get_direction(label).delta_hs.to(self.device)
         if clabels is None or clabels == []:
             return Q(delta_hs=primal)
@@ -343,4 +355,7 @@ class AnycostDirections:
         # new = primal - N.T @  torch.linalg.inv(A) @ B (fails on machines with low mem)
         new = new.reshape(primal_shape)
 
-        return Q(delta_hs=new)
+        new_Q = Q(delta_hs=new)
+        save_file(new_Q.to_state_dict(), cond_path)
+
+        return new_Q
