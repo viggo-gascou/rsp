@@ -1,7 +1,7 @@
 """Anycost editing module."""
 
+import json
 import logging
-import os
 import typing as t
 from pathlib import Path
 
@@ -93,13 +93,27 @@ class AnycostDirections:
         self.etas = etas
         self.idx_path = Path(
             self.out_folder,
-            f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}.safetensors",
+            "attributes.safetensors",
         )
         self.batch_size = batch_size
         attr_results = self.get_attrs(etas=self.etas)
         self.attrs = attr_results["attr"]
         self.attr_idxs = attr_results["idx"]
         self.ns = {}
+        self.config = self._get_config()
+
+    def _get_config(self):
+        config = {
+            "model": self.sd.model_id,
+            "timesteps": self.sd.num_inference_steps,
+            "h_space": self.sd.h_space,
+            "etas": self.etas,
+            "idx_size": self.idx_size,
+            "num_examples": self.num_examples,
+        }
+        with Path(self.out_folder / "config.json") as config_path:
+            config_path.write_text(json.dumps(config))
+        return config
 
     def compute_test_directions(self):
         """Compute the directions for the test labels."""
@@ -121,7 +135,7 @@ class AnycostDirections:
         Returns:
             dict: The attributes for the labels.
         """
-        if os.path.exists(self.idx_path) and not force_rerun:
+        if self.idx_path.exists() and not force_rerun:
             log(
                 f"Anycost attributes index loaded from {self.idx_path}",
                 level=logging.INFO,
@@ -245,7 +259,7 @@ class AnycostDirections:
         n.delta_hs /= num_samples
 
         if convergence_test:
-            convergence_path = self.out_folder / f"convergence_{label}.safetensors"
+            convergence_path = self.out_folder / "convergence" / f"{label}.safetensors"
             save_file(convergence_dict, convergence_path)
             log(
                 f"Saved convergence dict {label} to {convergence_path}",
@@ -264,14 +278,11 @@ class AnycostDirections:
         Returns:
             Q: The calculated direction.
         """
-        dir_path = self.idx_path.with_name(
-            f"{self.sd.model_label}-etas{self.etas}-idxsize{self.idx_size}"
-            f"-label{label}-numexamples{self.num_examples}.safetensors"
-        )
+        dir_path = self.out_folder / "directions" / f"{label}.safetensors"
 
         if label in self.ns.keys() and not force_rerun:
             return self.ns[label]
-        elif os.path.exists(dir_path) and not force_rerun:
+        elif dir_path.exists() and not force_rerun:
             log(f"Loading {dir_path}", level=logging.INFO)
             n = Q().from_state_dict(load_file(dir_path))
             self.ns[label] = n
