@@ -31,7 +31,10 @@ def get_au_histogram(au_column, name):
     plt.yticks(fontsize=15)
     plt.xticks(fontsize=15)
     plt.tight_layout()
-    plt.savefig(FIGURES_DIR / f"{name}_histogram.png", bbox_inches="tight")
+    plt.savefig(
+        FIGURES_DIR / "au_distributions_generated" / f"{name}_histogram.png",
+        bbox_inches="tight",
+    )
     plt.close()
     return
 

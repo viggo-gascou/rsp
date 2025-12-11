@@ -37,7 +37,9 @@ plt.tight_layout()
 plt.xticks(fontsize=20)
 plt.tick_params(axis="y", rotation=0, labelsize=20)
 
-plt.savefig("au_correlation_matrix.png", bbox_inches="tight")
+plt.savefig(
+    FIGURES_DIR / "correlations" / "au_correlation_matrix.png", bbox_inches="tight"
+)
 plt.close()
 
 
@@ -68,5 +70,7 @@ plt.xticks(fontsize=20)
 plt.tick_params(axis="y", rotation=0, labelsize=20)
 
 plt.tight_layout()
-plt.savefig("au_correlation_matrix_real.png", bbox_inches="tight")
+plt.savefig(
+    FIGURES_DIR / "correlations" / "au_correlation_matrix_real.png", bbox_inches="tight"
+)
 plt.close()
