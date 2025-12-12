@@ -189,3 +189,4 @@ results/final_results/**/*.png
 results/anycost/
 
 .DS_Store
+results/figures/convergence_explorer

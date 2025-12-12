@@ -15,7 +15,7 @@ from rsp.stateclass import Q
 
 path = RESULTS_DIR / "anycost"
 
-aus = ["AU04", "AU12"]
+aus = SUPPORTED_AUS
 sd = load_model("pixel", device="cuda", h_space="after", num_inference_steps=100)
 
 ad = AnycostDirections(
@@ -28,7 +28,7 @@ ad = AnycostDirections(
 
 scale = 0.5
 
-curr_seed = 100123012
+curr_seed = 11225
 sample_img = sd.sample(seed=curr_seed)
 
 # save image
@@ -41,7 +41,8 @@ img.save(figures_path / "unchanged_image.png")
 
 
 for au in aus:
-    file_path = path / f"convergence_{au}.safetensors"
+    file_path = path / "convergence" / f"{au}.safetensors"
+
     if not file_path.exists():
         print(f"File {file_path} does not exist. Skipping.")
 
@@ -51,7 +52,7 @@ for au in aus:
     if not (figures_path / au).exists():
         os.makedirs(figures_path / au)
 
-    for i in tqdm(range(0, tensor["steps_delta_hs"].shape[0], 2)):
+    for i in tqdm(range(0, tensor["steps_delta_hs"].shape[0], 5)):
         curr_direction = tensor["steps_delta_hs"][i]
 
         apply_direction = Q(delta_hs=curr_direction)
