@@ -14,7 +14,7 @@ from rsp.stateclass import Q
 
 set_logging_level(logging.INFO)
 
-FINAL_RESULTS_PATH = RESULTS_DIR / "final_results"
+FINAL_RESULTS_PATH = RESULTS_DIR / "au-edits"
 NUM_IMAGES = 100
 DEFAULT_SEED = 10000
 LATENTS_FILE = FINAL_RESULTS_PATH / "original_latents.safetensors"
