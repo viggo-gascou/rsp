@@ -117,19 +117,25 @@ class Q:
         # Convert label tensor back to string
         label_tensor = state_dict.get("label", torch.empty(0, dtype=torch.uint8))
         if label_tensor.numel() > 0:
-            label = bytes(label_tensor.numpy()).decode("utf-8")
+            label = bytes(label_tensor.cpu().numpy()).decode("utf-8")
         else:
             label = ""
+
+        zs = state_dict["zs"] if state_dict["zs"].numel() > 0 else None
+        etas = state_dict["etas"] if state_dict["etas"].numel() > 0 else None
+        delta_hs = (
+            state_dict["delta_hs"] if state_dict["delta_hs"].numel() > 0 else None
+        )
 
         return Q(
             x0=state_dict["x0"],
             xT=state_dict["xT"],
             w0=state_dict["w0"],
             wT=state_dict["wT"],
-            zs=state_dict["zs"],
             hs=state_dict["hs"],
-            etas=state_dict["etas"],
-            delta_hs=state_dict["delta_hs"],
+            zs=zs,
+            etas=etas,
+            delta_hs=delta_hs,
             seed=state_dict["seed"],
             asyrp=state_dict["asyrp"],
             cfg_scale=state_dict["cfg_scale"],
