@@ -187,6 +187,7 @@ data/*
 results/final_results/**/*.png
 
 results/anycost/
+results/au_editing/
 
 .DS_Store
 results/figures/convergence_explorer
