@@ -29,7 +29,8 @@ help:
 fetch-directions:
 	@uv run hf download --local-dir results/anycost/ viga-rsp/anycost-directions
 
-# Fetch au edit predictions and final results latens
+# Fetch au editing predictions and final results latents
+fetch-au-editing:
 	@uv run hf download --local-dir results/au_editing viga-rsp/au-editing
 
 install: ## Install dependencies
