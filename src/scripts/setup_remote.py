@@ -107,7 +107,7 @@ def setup_remote():
 
         # Update system dependencies and install GitHub CLI
         log("Installing GitHub CLI...", level=logging.INFO)
-        c.sudo("apt install gh -y", hide=True)
+        c.sudo("sudo apt install gh -y", hide=True)
 
         with c.cd(REPO_PATH):
             log("Copying .env file...", level=logging.INFO)
