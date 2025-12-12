@@ -100,6 +100,7 @@ class AnycostDirections:
         self.attrs = attr_results["attr"]
         self.attr_idxs = attr_results["idx"]
         self.ns = {}
+        self.cond_dirs = {}
         self.config = self._get_config()
 
     def _get_config(self):
@@ -326,9 +327,13 @@ class AnycostDirections:
         cond_path = self.out_folder / "disentangled" / f"{label}.safetensors"
         if not cond_path.parent.exists():
             cond_path.parent.mkdir(parents=True)
-        if cond_path.exists():
+        if label in self.cond_dirs.keys():
+            return self.cond_dirs[label]
+        elif cond_path.exists() and label not in self.cond_dirs.keys():
             log(f"Loading condition from {cond_path}", logging.INFO)
-            return Q().from_state_dict(load_file(cond_path))
+            cond = Q().from_state_dict(load_file(cond_path))
+            self.cond_dirs[label] = cond
+            return cond
 
         primal = self.get_direction(label).delta_hs.to(self.device)
         if clabels is None or clabels == []:
