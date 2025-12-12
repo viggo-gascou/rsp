@@ -102,6 +102,7 @@ class AnycostDirections:
         self.ns = {}
         self.cond_dirs = {}
         self.config = self._get_config()
+        self.force_overwrite = False
 
     def _get_config(self):
         config = {
@@ -112,9 +113,31 @@ class AnycostDirections:
             "idx_size": self.idx_size,
             "num_examples": self.num_examples,
         }
-        with Path(self.out_folder / "config.json") as config_path:
-            config_path.write_text(json.dumps(config))
-        return config
+        config_path = self.out_folder / "config.json"
+        if config_path.exists():
+            with config_path.open("r") as config_file:
+                existing_config = json.load(config_file)
+
+            # check if they differ
+            diff_str = ""
+            for key, new in config.items():
+                old = existing_config.get(key)
+                if old != new:
+                    diff_str += f"key {key}: old: {old} -> new: {new}\n"
+
+            if diff_str and not self.force_overwrite:
+                raise ValueError(
+                    f"Config differs with existing config:\n{diff_str}. "
+                    "If you want to overwrite, set force_overwrite=True"
+                )
+            elif self.force_overwrite:
+                with config_path.open("w") as config_file:
+                    json.dump(config, config_file)
+            else:
+                return existing_config
+        else:
+            with config_path.open("w") as config_file:
+                json.dump(config, config_file)
 
     def compute_test_directions(self):
         """Compute the directions for the test labels."""
