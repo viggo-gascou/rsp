@@ -101,8 +101,8 @@ class AnycostDirections:
         self.attr_idxs = attr_results["idx"]
         self.ns = {}
         self.cond_dirs = {}
-        self.config = self._get_config()
         self.force_overwrite = False
+        self.config = self._get_config()
 
     def _get_config(self):
         config = {
