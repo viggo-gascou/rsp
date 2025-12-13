@@ -31,7 +31,7 @@ fetch-directions:
 
 # Fetch au editing predictions and final results latents
 fetch-au-editing:
-	@uv run hf download --local-dir results/au_editing viga-rsp/au-editing
+	@uv run hf download --repo-type dataset --local-dir results/au_editing viga-rsp/au-editing
 
 install: ## Install dependencies
 	@echo "Installing the project..."
