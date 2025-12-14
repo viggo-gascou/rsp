@@ -120,7 +120,5 @@ SUPPORTED_AUS = [
 
 AU_SUBSET = [
     "AU04",
-    "AU06",
-    "AU10",
     "AU12",
 ]
