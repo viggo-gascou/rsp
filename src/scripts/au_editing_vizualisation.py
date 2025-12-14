@@ -1,14 +1,15 @@
-import itertools
 import logging
 
+import torch
 from safetensors.torch import load_file
 from tqdm import tqdm
 
-from rsp.constants import AU_SUBSET, RESULTS_DIR
+from rsp.constants import AU_SUBSET, FIGURES_DIR, RESULTS_DIR, SUPPORTED_AUS
 from rsp.editing import AnycostDirections, AnycostPredictor
 from rsp.loading import load_model
 from rsp.log_utils import log
 from rsp.stateclass import Q
+from rsp.utils import image_grid
 
 FINAL_RESULTS_PATH = RESULTS_DIR / "au_editing"
 NUM_IMAGES = 100
@@ -53,18 +54,36 @@ if LATENTS_FILE.exists():
             q_originals.append(q)
 
 
-for au in AU_SUBSET:
+def show(q: Q | list[Q]):
+    """Show the output image the diffusion model."""
+    if isinstance(q, Q):
+        q = [q]
+    imgs = [q_.x0 for q_ in q]
+    imgs = torch.cat(imgs)
+
+    return image_grid(imgs, size=225, rows=2, cols=3)
+
+
+for au in tqdm(AU_SUBSET):
+    q_edits = []
+    q_edits_disentangled = []
     for i, q in enumerate(q_originals):
-        q_edits = []
         for scale in [0.0, 0.5, 1.0]:
             dir = ad.get_direction(au)
+            rest_aus = [au_ for au_ in SUPPORTED_AUS if au_ != au]
+            cond_dir = ad.get_cond_dir(au, rest_aus)
             if scale == 0.0:
                 q_edit = q
+                q_edit_disentangled = q
             else:
                 q_edit = sd.apply_direction(q, dir, scale)
+                q_edit_disentangled = sd.apply_direction(q, cond_dir, scale)
             q_edits.append(q_edit)
-        imgs = sd.show(q_edits)
-        imgs.save(FINAL_RESULTS_PATH / f"au_{au}_{i}_editing.png")
+            q_edits_disentangled.append(q_edit_disentangled)
+    imgs = show(q_edits)
+    imgs_disentangled = show(q_edits_disentangled)
+    imgs.save(FIGURES_DIR / f"au_{au}_editing.pdf")
+    imgs_disentangled.save(FIGURES_DIR / f"au_{au}_disentangled_editing.pdf")
 
 # combs = list(itertools.combinations(AU_SUBSET, 2))
 # for au1, au2 in tqdm(combs):
