@@ -51,7 +51,7 @@ install-uv:
 
 install-dependencies:
 	@uv python install 3.11
-	@uv sync --no-dev --python 3.11
+	@uv sync --python 3.11
 
 install-pre-commit:
 	@uv run pre-commit install
