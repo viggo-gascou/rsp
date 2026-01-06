@@ -37,9 +37,9 @@ fetch-au-editing:
 results:
 	@uv run src/scripts/au_editing.py
 	@uv run src/scripts/au_editing_vizualisation.py
- 	@uv run src/scripts/au_differences.py
-  	@uv run src/scripts/convergence_explorer.py
-   	@uv run src/scripts/au_distributions.py
+	@uv run src/scripts/au_differences.py
+	@uv run src/scripts/convergence_explorer.py
+	@uv run src/scripts/au_distributions.py
 
 install: ## Install dependencies
 	@echo "Installing the project..."
